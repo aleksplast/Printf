@@ -1,54 +1,52 @@
 section .text
 
-global _start
+global MyPrintf
 
-_start:         mov rdi, Msg
-                mov rsi, Char
-                mov rdx, Number
-                mov rcx, Number
-                mov r8, Number
-                mov r9, ASS
-                push Number
-                push Char
-                push ASS
+MyPrintf:       pop r15
+                push r9
+                push r8
+                push rcx
+                push rdx
+                push rsi
                 push rbp
                 mov rbp, rsp
-                call printf
+                add rbp, 8
 
-                mov rax, 0x3c
-                xor rdi, rdi
-                syscall
-
-printf:         push rsi
-
+                push rsi
                 mov rsi, rdi
                 call StrLen
                 pop rsi
                 mov r12, rax
-                call Parameters
                 xor r11, r11
                 xor r10, r10
 
-.next           cmp r10, r12
-                je .Done
+NextMain:       cmp r10, r12
+                je DoneMain
 
                 cmp byte rdi[r10], '%'
-                jne .usual
+                jne usual
 
                 inc r10
-                call SpecificatorHandler
-                jmp .next
+                jmp SpecificatorHandler
+GlobalNext:     jmp NextMain
 
-.usual          mov rax, rdi[r10]
+usual:          mov rax, rdi[r10]
                 mov ExtraBuf[r11], rax
                 inc r11
                 inc r10
                 call CheckExtraBuf
 
-                jmp .next
+                jmp NextMain
 
-.Done           call PrintExtraBuff
+DoneMain:       call PrintExtraBuff
 
+                pop rbp
+                pop rsi
+                pop rdx
+                pop rcx
+                pop r8
+                pop r9
+                push r15
                 ret
 
 
@@ -129,113 +127,24 @@ StrLen:	    push rsi
 ;------------------------------------------------
 
 SpecificatorHandler:
-            pop r15
             call PrintExtraBuff
             cmp byte rdi[r10], '%'
             je .PercentPrt
             xor rbx, rbx
             mov byte bl, rdi[r10]
-            sub bl, 'b'
-            mov rax, [JmpTable + 8 * rbx]
-            jmp rax
+            jmp [JmpTable + 8 * (rbx - 'b')]
 
 .PercentPrt mov byte ExtraBuf[r11], '%'
             inc r11
 
 SpecOver:   inc r10
-            push r15
 
-            ret
-
-;------------------------------------------------
-; Pushes parameters into stack
-;------------------------------------------------
-; Entry:    R12 = strlen
-;           RDI = str ptr
-; Exit:		all parameters in stack
-; Expects:	none
-; Destroys: RAX, RBX, R14
-;------------------------------------------------
-Parameters  pop r15
-            xor rax, rax
-            xor r14, r14
-
-.Next       cmp r14, r12
-            je .NumPar
-            cmp byte rdi[r14], '%'
-            je .Prbbly
-            inc r14
-            jmp .Next
-
-.Prbbly     cmp byte rdi[r14 + 1], '%'
-            jne .Sure
-            add r14, 2
-            jmp .Next
-
-.Sure       inc rax
-            add r14, 2
-            jmp .Next
-
-.NumPar     cmp rax, 5
-            ja .Stac
-            je .5par
-            cmp rax, 4
-            je .4par
-            cmp rax, 3
-            je .3par
-            cmp rax, 2
-            je .2par
-            cmp rax, 1
-            je .1par
-            jmp .Done
-
-.Stac       xor rbx, rbx
-            sub rax, 5
-.Next2      cmp rbx, rax
-            je .Regs
-            mov r14, rbp[8 + rbx * 8]
-            push r14
-            inc rbx
-            jmp .Next2
-.Regs       push r9
-            push r8
-            push rcx
-            push rdx
-            push rsi
-            jmp .Done
-
-.5par       push r9
-            push r8
-            push rcx
-            push rdx
-            push rsi
-            jmp .Done
-
-.4par       push r8
-            push rcx
-            push rdx
-            push rsi
-            jmp .Done
-
-.3par       push rcx
-            push rdx
-            push rsi
-            jmp .Done
-
-.2par       push rdx
-            push rsi
-            jmp .Done
-
-.1par       push rsi
-            jmp .Done
-
-.Done       push r15
-            ret
-
-;---------------------------------------------------------
+            jmp GlobalNext
 
 
-Sspecif:    pop rax
+Sspecif:    mov rax, [rbp]
+            add rbp, 8
+
             push rax
             push rsi
             push rdx
@@ -259,7 +168,9 @@ Sspecif:    pop rax
 
 ;---------------------------------------------------------
 
-Ospecif:    pop rax
+Ospecif:    mov rax, [rbp]
+            add rbp, 8
+
             xor r13, r13
             push rsi
             push rdx
@@ -289,7 +200,9 @@ Ospecif:    pop rax
 
 ;---------------------------------------------------------
 
-Cspecif:    pop rax
+Cspecif:    mov rax, [rbp]
+            add rbp, 8
+
             call CheckExtraBuf
             mov byte ExtraBuf[r11], al
             inc r11
@@ -298,7 +211,9 @@ Cspecif:    pop rax
 
 ;---------------------------------------------------------
 
-Dspecif:    pop rax
+Dspecif:    mov rax, [rbp]
+            add rbp, 8
+
             push rax
             push rbx
             push rcx
@@ -374,7 +289,9 @@ PrintDex:   push rax
 
 ;---------------------------------------------------------
 
-Bspecif:    pop rax
+Bspecif:    mov rax, [rbp]
+            add rbp, 8
+
             push rax
             push rdx
             xor dx, dx
@@ -403,7 +320,9 @@ Bspecif:    pop rax
 
 ;---------------------------------------------------------
 
-Xspecif:    pop rax
+Xspecif:    mov rax, [rbp]
+            add rbp, 8
+
             xor r13, r13
             push rsi
             push rdx
@@ -461,5 +380,7 @@ EXTRABUFLEN     equ 256
 ExtraBuf        times 256 db 0
 Number          equ 255
 Char            equ 'c'
-Msg:            db "__HELLO %c %d %o %x %s %%%%%%%% %d %c YOUR MUM %s", 0x0a, 0x00
+Msg:            db "__HELLO", 0x0a
+                db "What do you love?", 0x0a,
+                db 0x00
 ASS:            db "YOUR MUM GAY", 0x00

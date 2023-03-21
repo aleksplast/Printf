@@ -20,25 +20,25 @@ MyPrintf:       pop r15
                 xor r11, r11
                 xor r10, r10
 
-NextMain:       cmp r10, r12
-                je DoneMain
+.Next:          cmp r10, r12
+                je .Done
 
                 cmp byte rdi[r10], '%'
-                jne usual
+                jne .usual
 
                 inc r10
-                jmp SpecificatorHandler
-GlobalNext:     jmp NextMain
+                call SpecificatorHandler
+                jmp .Next
 
-usual:          mov rax, rdi[r10]
+.usual:         mov rax, rdi[r10]
                 mov ExtraBuf[r11], rax
                 inc r11
                 inc r10
                 call CheckExtraBuf
 
-                jmp NextMain
+                jmp .Next
 
-DoneMain:       call PrintExtraBuff
+.Done:          call PrintExtraBuff
 
                 pop rbp
                 pop rsi
@@ -139,7 +139,7 @@ SpecificatorHandler:
 
 SpecOver:   inc r10
 
-            jmp GlobalNext
+            ret
 
 
 Sspecif:    mov rax, [rbp]
@@ -168,33 +168,8 @@ Sspecif:    mov rax, [rbp]
 
 ;---------------------------------------------------------
 
-Ospecif:    mov rax, [rbp]
-            add rbp, 8
-
-            xor r13, r13
-            push rsi
-            push rdx
-            push rax
-			xor rdx, rdx
-
-.Next1:		call CheckExtraBuf
-            cmp rax, 0
-			je .Done1
-
-			mov rsi, rax
-			and rsi, 111b
-
-			add rsi, 30h
-			mov DexBuf[r13], rsi
-            inc r13
-
-            shr rax, 3
-			jmp .Next1
-
-.Done1:     call PrintDex
-            pop rax
-            pop rdx
-            pop rsi
+Ospecif:    mov cl, 3
+            call HexPrint
 
             jmp SpecOver
 
@@ -223,6 +198,12 @@ Dspecif:    mov rax, [rbp]
             xor rcx, rcx
             xor rdx, rdx
             xor r13, r13
+
+            cmp eax, 0
+            jge .Next3
+            mov byte ExtraBuf[r11], '-'
+            inc r11
+            neg eax
 
 .Next3:		call CheckExtraBuf
             xor dx, dx
@@ -289,38 +270,27 @@ PrintDex:   push rax
 
 ;---------------------------------------------------------
 
-Bspecif:    mov rax, [rbp]
-            add rbp, 8
-
-            push rax
-            push rdx
-            xor dx, dx
-            xor r13, r13
-
-.Next2:		call CheckExtraBuf
-            cmp rax, 0
-			je .Done2
-
-			shr rax, 1
-			jc .PrtZ
-			mov byte DexBuf[r13], 0x30
-            inc r13
-			jmp .Nothing2
-
-.PrtZ:		mov byte DexBuf[r13], 0x31
-            inc r13
-
-.Nothing2:  jmp .Next2
-
-.Done2:		call PrintDex
-            pop rdx
-            pop rax
+Bspecif:    mov cl, 1
+            call HexPrint
 
             jmp SpecOver
 
 ;---------------------------------------------------------
 
-Xspecif:    mov rax, [rbp]
+Xspecif:    mov cl, 4
+            call HexPrint
+
+            jmp SpecOver
+
+;------------------------------------------------
+; Prints number in base of 2^n into extra buffer
+;------------------------------------------------
+; Entry:    CL = base shift
+; Exit:		none
+; Expects:	none
+; Destroys: R13
+;------------------------------------------------
+HexPrint:   mov rax, [rbp]
             add rbp, 8
 
             xor r13, r13
@@ -349,14 +319,15 @@ Xspecif:    mov rax, [rbp]
 			mov DexBuf[r13], rsi
             inc r13
 
-.None       shr rax, 4
+.None       shr rax, cl
 			jmp .Next1
 
 .Done1:     call PrintDex
             pop rax
             pop rdx
             pop rsi
-            jmp SpecOver
+
+            ret
 
 ;---------------------------------------------------------
 

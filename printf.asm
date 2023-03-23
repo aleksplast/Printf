@@ -293,18 +293,23 @@ Xspecif:    mov cl, 4
 HexPrint:   mov rax, [rbp]
             add rbp, 8
 
+
             xor r13, r13
             push rsi
             push rdx
             push rax
+            push rbx
 			xor rdx, rdx
+            mov rbx, 1
+            shl rbx, cl
+            sub rbx, 1
 
 .Next1:		call CheckExtraBuf
             cmp rax, 0
 			je .Done1
 
 			mov rsi, rax
-			and rsi, 0x000F
+			and rsi, rbx
 
 			cmp rsi, 0Ah
 			jae .PrtSym
@@ -323,6 +328,8 @@ HexPrint:   mov rax, [rbp]
 			jmp .Next1
 
 .Done1:     call PrintDex
+
+            pop rbx
             pop rax
             pop rdx
             pop rsi

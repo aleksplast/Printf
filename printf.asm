@@ -128,13 +128,18 @@ StrLen:	    push rsi
 
 SpecificatorHandler:
             call PrintExtraBuff
-            cmp byte rdi[r10], '%'
-            je .PercentPrt
+            cmp byte rdi[r10], 'b'
+            jb DefaultCase
+            cmp byte rdi[r10], 'x'
+            ja DefaultCase
             xor rbx, rbx
             mov byte bl, rdi[r10]
             jmp [JmpTable + 8 * (rbx - 'b')]
 
-.PercentPrt mov byte ExtraBuf[r11], '%'
+DefaultCase push rax
+            mov byte al, rdi[r10]
+            mov byte ExtraBuf[r11], al
+            pop rax
             inc r11
 
 SpecOver:   inc r10
@@ -341,18 +346,6 @@ HexPrint:   mov rax, [rbp]
 
 section .data
 
-JmpTable:
-.Bspec       dq Bspecif
-.Cspec       dq Cspecif
-.Dspec       dq Dspecif
-times ('o'-'d' - 1)   dq 0
-.Ospec       dq Ospecif
-times  ('s' - 'o' - 1)   dq 0
-.Sspec       dq Sspecif
-times ('x' - 's' - 1) dq 0
-.Xspec       dq Xspecif
-
-
 DexBuf          times 256 db 0
 EXTRABUFLEN     equ 256
 ExtraBuf        times 256 db 0
@@ -362,3 +355,16 @@ Msg:            db "__HELLO", 0x0a
                 db "What do you love?", 0x0a,
                 db 0x00
 ASS:            db "YOUR MUM GAY", 0x00
+
+section .rodata
+
+JmpTable:
+.Bspec       dq Bspecif
+.Cspec       dq Cspecif
+.Dspec       dq Dspecif
+times ('o'-'d' - 1)   dq DefaultCase
+.Ospec       dq Ospecif
+times  ('s' - 'o' - 1)   dq DefaultCase
+.Sspec       dq Sspecif
+times ('x' - 's' - 1) dq DefaultCase
+.Xspec       dq Xspecif
